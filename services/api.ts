@@ -1,10 +1,10 @@
 
 import { User, Transaction, AddUserParams, Subscription, AuditLog, Review, AppDataType, KpiData, AddAdminParams } from '../types';
 
-// Dynamic base: localhost in dev, relative in prod
-export const API_BASE_URL = (typeof window !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1'))
-  ? 'http://localhost:3001/api'
-  : '/api'; // Production uses relative path - Nginx will proxy /api to backend
+// API Base URL Configuration
+// Development: uses localhost
+// Production: uses full domain https://vaultchaintr.com/api
+export const API_BASE_URL = 'https://vaultchaintr.com/api'; // Production uses full domain URL
 
 const handleResponse = async (response: Response) => {
     if (!response.ok) {
