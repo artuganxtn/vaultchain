@@ -1,479 +1,610 @@
-# VaultChain AWS EC2 Deployment Guide
+# Complete AWS EC2 Deployment Guide for VaultChain
 
-This guide will help you deploy your VaultChain application to AWS EC2 instance with the domain `vaultchaintr.com`.
+## Overview
+This guide will help you deploy your VaultChain application to AWS EC2 with:
+- **Frontend**: `https://vaultchaintr.com`
+- **Backend API**: `https://vaultchaintr.com/api`
+- **Database**: SQLite (included in backend)
+
+---
 
 ## Prerequisites
 
-- AWS Account with EC2 access
-- Domain name `vaultchaintr.com` configured
-- SSH key pair for EC2 access
-- Basic knowledge of Linux commands
+### AWS Setup
+1. **EC2 Instance**
+   - Launch an Ubuntu 22.04 LTS instance (t2.micro minimum, t2.small recommended)
+   - Ensure your security group allows:
+     - **HTTP (Port 80)** - For Let's Encrypt SSL
+     - **HTTPS (Port 443)** - For your website
+     - **SSH (Port 22)** - For server access
+     - Remove port 3001 from public access (only internal Nginx → Backend)
+
+2. **Domain & DNS**
+   - Point `vaultchaintr.com` A record to your EC2 instance **public IP**
+   - Point `www.vaultchaintr.com` A record to the same IP (or CNAME to main domain)
+   - Wait for DNS propagation (can take up to 48 hours, usually faster)
+
+3. **SSH Access**
+   - Download your EC2 key pair (.pem file)
+   - Set permissions: `chmod 400 your-key.pem` (Mac/Linux) or use PuTTY (Windows)
 
 ---
 
-## Step 1: Create and Launch EC2 Instance
+## Step-by-Step Deployment
 
-1. **Go to AWS Console → EC2 Dashboard**
-2. **Click "Launch Instance"**
-3. **Configure Instance:**
-   - **Name:** `vaultchain-server`
-   - **AMI:** Ubuntu 22.04 LTS (or latest)
-   - **Instance Type:** `t3.medium` or `t3.large` (recommended)
-   - **Key Pair:** Create new or select existing
-   - **Network Settings:**
-     - Allow HTTP (Port 80)
-     - Allow HTTPS (Port 443)
-     - Allow Custom TCP Port 3001 (for backend API)
-     - Allow SSH (Port 22) - from your IP only
-   - **Storage:** 20 GB minimum
-4. **Launch Instance**
-
----
-
-## Step 2: Configure Domain DNS
-
-1. **Go to your domain registrar** (where you bought `vaultchaintr.com`)
-2. **Update DNS Records:**
-   - **A Record:** `@` → Your EC2 Public IP
-   - **A Record:** `www` → Your EC2 Public IP
-   - **A Record:** `api` → Your EC2 Public IP (optional, for API subdomain)
-
-Wait 5-10 minutes for DNS propagation.
-
----
-
-## Step 3: Connect to EC2 Instance
+### Step 1: Connect to Your EC2 Instance
 
 ```bash
-# Replace with your key file and EC2 IP
-ssh -i your-key.pem ubuntu@your-ec2-public-ip
+# Linux/Mac
+ssh -i your-key.pem ubuntu@YOUR_EC2_PUBLIC_IP
+
+# Windows (use PowerShell or WSL)
+ssh -i your-key.pem ubuntu@YOUR_EC2_PUBLIC_IP
 ```
 
----
-
-## Step 4: Initial Server Setup
+### Step 2: Install System Dependencies
 
 ```bash
-# Update system
+# Update system packages
 sudo apt update && sudo apt upgrade -y
 
-# Install essential packages
-sudo apt install -y build-essential curl git nginx certbot python3-certbot-nginx
+# Install essential tools
+sudo apt install -y build-essential curl git
 
-# Install Node.js 18.x
+# Install Node.js 18.x LTS
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt install -y nodejs
 
-# Verify installations
-node --version  # Should show v18.x
+# Verify Node.js installation
+node --version  # Should show v18.x.x or higher
 npm --version
-nginx -v
-```
 
----
-
-## Step 5: Setup PM2 (Process Manager)
-
-```bash
-# Install PM2 globally
+# Install PM2 (process manager for Node.js)
 sudo npm install -g pm2
 
-# Start PM2 on system boot
+# Install Nginx (web server)
+sudo apt install -y nginx
+
+# Install Certbot for SSL certificates
+sudo apt install -y certbot python3-certbot-nginx
+
+# Enable PM2 to start on boot
 pm2 startup systemd
-# Follow the command it outputs (usually: sudo env PATH=...)
+# Run the command it outputs (usually starts with "sudo env PATH=...")
 ```
 
----
+### Step 3: Upload Your Application
 
-## Step 6: Clone and Setup Backend
+#### Option A: Using Git (Recommended)
+```bash
+# If your code is in a Git repository
+cd ~
+git clone YOUR_REPO_URL vaultchain
+cd vaultchain
+```
+
+#### Option B: Using SCP from Local Machine
+```bash
+# From your LOCAL machine (Windows/Mac/Linux)
+# Make sure you're in the vaultchain directory
+scp -i your-key.pem -r . ubuntu@YOUR_EC2_PUBLIC_IP:~/vaultchain
+```
+
+#### Option C: Using FileZilla/WinSCP
+- Connect via SFTP using your EC2 IP, username (ubuntu), and key file
+- Upload the entire vaultchain directory
+
+### Step 4: Setup Backend
 
 ```bash
-# Create app directory
-cd ~
-mkdir -p vaultchain-app
-cd vaultchain-app
-
-# Upload your project files (Option 1: Using Git)
-git clone your-repository-url backend
-cd backend
-
-# OR (Option 2: Using SCP from your local machine)
-# scp -i your-key.pem -r /path/to/vaultchain/backend ubuntu@your-ec2-ip:~/vaultchain-app/
+cd ~/vaultchain/backend
 
 # Install backend dependencies
-cd backend
 npm install --production
 
-# Create .env file
+# Create .env file for environment variables
 nano .env
 ```
 
-**Add to `.env`:**
+**Add the following to `.env` file:**
 ```env
 # Server Configuration
 PORT=3001
 NODE_ENV=production
+HOST=0.0.0.0
 
-# Frontend URL
-FRONTEND_URL=https://vaultchaintr.com
+# CORS (if needed to override)
+CORS_ORIGIN=https://vaultchaintr.com
 
-# Database (SQLite - already included, or configure PostgreSQL if preferred)
-DATABASE_PATH=./database.db
-
-# SMTP Email Configuration
+# Email Configuration (Required for password reset and OTP)
+# For Gmail: Use App Password (not regular password)
+# Settings: https://myaccount.google.com/apppasswords
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
-SMTP_USER=your-email@vaultchaintr.com
-SMTP_PASSWORD=your-app-password
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-specific-password
 
-# CORS (if needed)
-CORS_ORIGIN=https://vaultchaintr.com
+# Gemini AI API (for financial assistant)
+GEMINI_API_KEY=your-gemini-api-key-here
 ```
 
-Save and exit (Ctrl+X, then Y, then Enter)
-
----
-
-## Step 7: Setup Frontend
+**Save the file:** Press `Ctrl+X`, then `Y`, then `Enter`
 
 ```bash
-# Navigate to root
-cd ~/vaultchain-app
+# Create logs directory for PM2
+mkdir -p logs
 
-# Upload frontend files
-# Option 1: Using Git (if frontend is in same repo)
-# Option 2: Using SCP
-# scp -i your-key.pem -r /path/to/vaultchain/* ubuntu@your-ec2-ip:~/vaultchain-app/frontend/
+# Start backend with PM2
+pm2 start ecosystem.config.js
+
+# Save PM2 configuration
+pm2 save
+
+# Check backend status
+pm2 status
+pm2 logs vaultchain-backend  # View logs (Ctrl+C to exit)
+```
+
+**Test backend locally:**
+```bash
+curl http://localhost:3001/api/data
+# Should return JSON data
+```
+
+### Step 5: Build Frontend
+
+```bash
+cd ~/vaultchain
 
 # Install frontend dependencies
-cd frontend
 npm install
 
-# Build for production
-npm run build
-
-# The dist folder now contains your production build
+# Create .env.local file if you need to set GEMINI_API_KEY for frontend
+# (The API key is used in backend, but can be set here for frontend if needed)
+nano .env.local
 ```
 
-**Update frontend API configuration:**
-
-Edit `vite.config.ts` or `config.ts` to use production API URL:
-```typescript
-// In services/api.ts or config.ts
-export const API_BASE_URL = 'https://vaultchaintr.com/api';
+**Add if needed:**
+```env
+GEMINI_API_KEY=your-gemini-api-key-here
 ```
-
-Rebuild:
-```bash
-npm run build
-```
-
----
-
-## Step 8: Configure Nginx
 
 ```bash
-# Create Nginx configuration
+# Build frontend for production
+npm run build
+
+# This creates a 'dist' folder with production-ready files
+```
+
+### Step 6: Configure Nginx
+
+```bash
+# Create Nginx configuration file
 sudo nano /etc/nginx/sites-available/vaultchaintr.com
 ```
 
-**Add this configuration:**
+**Paste this configuration (IMPORTANT: Update paths if different):**
 ```nginx
+# HTTP to HTTPS redirect
 server {
     listen 80;
+    listen [::]:80;
+    server_name vaultchaintr.com www.vaultchaintr.com;
+    
+    # For Let's Encrypt verification
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+    
+    # Redirect all other HTTP traffic to HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS Server Block
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name vaultchaintr.com www.vaultchaintr.com;
 
-    # Frontend (React/Vite build)
-    location / {
-        root /home/ubuntu/vaultchain-app/frontend/dist;
-        index index.html;
-        try_files $uri $uri/ /index.html;
+    # SSL Certificate (Let's Encrypt - will be set up in next step)
+    ssl_certificate /etc/letsencrypt/live/vaultchaintr.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/vaultchaintr.com/privkey.pem;
+    
+    # SSL Configuration (best practices)
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # Security Headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Frontend files location
+    root /home/ubuntu/vaultchain/dist;
+    index index.html;
+
+    # Translations JSON files - IMPORTANT: Must come BEFORE location /
+    location /translations/ {
+        root /home/ubuntu/vaultchain/dist;
+        default_type application/json;
+        add_header Content-Type application/json;
+        expires 1h;
+        add_header Cache-Control "public, max-age=3600";
+        try_files $uri =404;
     }
 
-    # Backend API
+    # Backend API - Proxies to internal backend server
+    # External URL: https://vaultchaintr.com/api
+    # Internal connection: http://127.0.0.1:3001
     location /api {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://127.0.0.1:3001;
         proxy_http_version 1.1;
+        
+        # Headers for proper proxying
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        
+        # Timeouts
         proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+        proxy_send_timeout 300s;
     }
 
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
+    # Frontend (React/Vite build) - This comes LAST as fallback
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Static files caching
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        root /home/ubuntu/vaultchain/dist;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
 }
 ```
+
+**Save:** `Ctrl+X`, then `Y`, then `Enter`
 
 ```bash
 # Enable the site
 sudo ln -s /etc/nginx/sites-available/vaultchaintr.com /etc/nginx/sites-enabled/
 
-# Remove default site (optional)
-sudo rm /etc/nginx/sites-enabled/default
+# Remove default site
+sudo rm -f /etc/nginx/sites-enabled/default
 
 # Test Nginx configuration
 sudo nginx -t
 
-# Restart Nginx
+# If test passes, restart Nginx
 sudo systemctl restart nginx
+
+# Check Nginx status
+sudo systemctl status nginx
 ```
 
----
+### Step 7: Setup SSL Certificate with Let's Encrypt
 
-## Step 9: Setup SSL Certificate (HTTPS)
+**IMPORTANT:** Make sure your DNS is pointing to your EC2 instance before running this!
 
 ```bash
-# Obtain SSL certificate using Let's Encrypt
+# Request SSL certificate
 sudo certbot --nginx -d vaultchaintr.com -d www.vaultchaintr.com
 
 # Follow the prompts:
-# - Enter your email
-# - Agree to terms
-# - Choose redirect HTTP to HTTPS
-
-# Auto-renewal is set up automatically
-# Test renewal: sudo certbot renew --dry-run
+# 1. Enter your email address
+# 2. Agree to terms of service (A)
+# 3. Choose to redirect HTTP to HTTPS (2)
 ```
 
----
+**Certbot will automatically:**
+- Generate SSL certificates
+- Update your Nginx configuration
+- Set up auto-renewal
 
-## Step 10: Start Backend with PM2
+**Test auto-renewal:**
+```bash
+sudo certbot renew --dry-run
+```
+
+### Step 8: Configure Firewall
 
 ```bash
-cd ~/vaultchain-app/backend
-
-# Create PM2 ecosystem file
-nano ecosystem.config.js
-```
-
-**Add to `ecosystem.config.js`:**
-```javascript
-module.exports = {
-  apps: [{
-    name: 'vaultchain-backend',
-    script: './server.js',
-    instances: 1,
-    exec_mode: 'fork',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3001
-    },
-    error_file: './logs/err.log',
-    out_file: './logs/out.log',
-    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-    merge_logs: true,
-    autorestart: true,
-    max_memory_restart: '1G'
-  }]
-};
-```
-
-```bash
-# Create logs directory
-mkdir -p logs
-
-# Start the application
-pm2 start ecosystem.config.js
-
-# Save PM2 configuration
-pm2 save
-
-# Check status
-pm2 status
-pm2 logs vaultchain-backend
-```
-
----
-
-## Step 11: Configure Firewall (UFW)
-
-```bash
-# Allow Nginx
+# Enable UFW (Uncomplicated Firewall)
 sudo ufw allow 'Nginx Full'
 sudo ufw allow 'OpenSSH'
 sudo ufw enable
 
-# Check status
+# Verify firewall status
 sudo ufw status
 ```
 
+### Step 9: Test Your Deployment
+
+1. **Test Backend API:**
+   ```bash
+   curl https://vaultchaintr.com/api/data
+   # Should return JSON data
+   ```
+
+2. **Test Frontend:**
+   - Open browser: `https://vaultchaintr.com`
+   - Should see your application
+
+3. **Check Logs:**
+   ```bash
+   # Backend logs
+   pm2 logs vaultchain-backend
+   
+   # Nginx error logs
+   sudo tail -f /var/log/nginx/error.log
+   
+   # Nginx access logs
+   sudo tail -f /var/log/nginx/access.log
+   ```
+
 ---
 
-## Step 12: Update Frontend API Base URL
+## Configuration Files Checklist
 
-Make sure your frontend points to the production API. Update `services/api.ts`:
+### ✅ Already Configured (No Changes Needed):
+- ✅ `services/api.ts` - API_BASE_URL is set to `https://vaultchaintr.com/api`
+- ✅ `backend/server.js` - Listens on `0.0.0.0:3001` (correct for EC2)
+- ✅ `backend/app.js` - CORS includes `https://vaultchaintr.com`
+- ✅ `backend/ecosystem.config.js` - PM2 configuration ready
+- ✅ `nginx-config-vaultchaintr.com-ssl.conf` - SSL config template available
 
-```typescript
-export const API_BASE_URL = typeof window !== 'undefined' 
-  ? (location.hostname === 'vaultchaintr.com' || location.hostname === 'www.vaultchaintr.com'
-      ? 'https://vaultchaintr.com/api'
-      : 'http://localhost:3001/api')
-  : '/api';
-```
+### ⚠️ Files You Need to Create/Update:
 
-Rebuild frontend:
+1. **`backend/.env`** - Create this file with your environment variables (Step 4)
+2. **`.env.local`** (optional) - For frontend environment variables if needed
+
+---
+
+## Updating Your Application
+
+### Quick Update Script
+
+Create a file `~/vaultchain/deploy.sh`:
+
 ```bash
-cd ~/vaultchain-app/frontend
+#!/bin/bash
+cd ~/vaultchain
+
+echo "Updating backend..."
+cd backend
+git pull  # or upload new files
+npm install --production
+pm2 restart vaultchain-backend
+
+echo "Updating frontend..."
+cd ..
+npm install
 npm run build
+
+echo "Restarting Nginx..."
+sudo systemctl restart nginx
+
+echo "✅ Deployment complete!"
 ```
 
----
-
-## Step 13: Test Your Deployment
-
-1. **Visit:** `https://vaultchaintr.com`
-2. **Check:**
-   - Frontend loads correctly
-   - API endpoints work (`https://vaultchaintr.com/api/data`)
-   - SSL certificate is valid (green lock icon)
-   - Signup and OTP verification work
-
----
-
-## Useful Commands
-
-### PM2 Management
+Make it executable:
 ```bash
-pm2 status                    # Check app status
-pm2 logs vaultchain-backend   # View logs
-pm2 restart vaultchain-backend # Restart app
-pm2 stop vaultchain-backend   # Stop app
-pm2 monit                     # Monitor resources
+chmod +x ~/vaultchain/deploy.sh
 ```
 
-### Nginx Management
+Run updates:
 ```bash
-sudo systemctl status nginx   # Check status
-sudo systemctl restart nginx  # Restart
-sudo nginx -t                 # Test config
-sudo tail -f /var/log/nginx/error.log  # View error logs
+~/vaultchain/deploy.sh
 ```
 
-### Application Logs
-```bash
-# Backend logs
-pm2 logs vaultchain-backend
+### Manual Update
 
-# Nginx logs
-sudo tail -f /var/log/nginx/access.log
-sudo tail -f /var/log/nginx/error.log
+```bash
+# Backend
+cd ~/vaultchain/backend
+# Upload new files or: git pull
+npm install --production
+pm2 restart vaultchain-backend
+pm2 logs vaultchain-backend  # Check for errors
+
+# Frontend
+cd ~/vaultchain
+# Upload new files or: git pull
+npm install
+npm run build
+sudo systemctl restart nginx
 ```
 
 ---
 
 ## Troubleshooting
 
-### 1. **Cannot access the website**
-- Check security group allows HTTP (80) and HTTPS (443)
-- Check DNS has propagated: `nslookup vaultchaintr.com`
-- Check Nginx is running: `sudo systemctl status nginx`
+### Website Not Loading
 
-### 2. **API not working**
-- Check backend is running: `pm2 status`
-- Check backend logs: `pm2 logs vaultchain-backend`
-- Check Nginx proxy configuration
-- Test backend directly: `curl http://localhost:3001/api/data`
+1. **Check DNS:**
+   ```bash
+   nslookup vaultchaintr.com
+   # Should show your EC2 IP
+   ```
 
-### 3. **SSL Certificate issues**
-- Ensure domain DNS is pointing to EC2 IP
-- Wait for DNS propagation (can take up to 48 hours)
-- Check certificate: `sudo certbot certificates`
+2. **Check Security Group:**
+   - AWS Console → EC2 → Security Groups
+   - Ensure ports 80, 443 are open to 0.0.0.0/0
 
-### 4. **Database issues**
-- Ensure `database.db` file has correct permissions
-- Check database location in `.env`
+3. **Check Nginx:**
+   ```bash
+   sudo systemctl status nginx
+   sudo nginx -t  # Test configuration
+   ```
 
-### 5. **Email not sending**
-- Verify SMTP credentials in `.env`
-- Check email service logs
-- Test email: `cd backend && node test-email.js`
+4. **Check Firewall:**
+   ```bash
+   sudo ufw status
+   ```
+
+### API Not Working
+
+1. **Check Backend:**
+   ```bash
+   pm2 status
+   pm2 logs vaultchain-backend
+   ```
+
+2. **Test Backend Locally:**
+   ```bash
+   curl http://localhost:3001/api/data
+   ```
+
+3. **Check Nginx Proxy:**
+   ```bash
+   sudo tail -f /var/log/nginx/error.log
+   ```
+
+4. **Check CORS:**
+   - Verify `backend/app.js` has `https://vaultchaintr.com` in allowed origins
+
+### SSL Certificate Issues
+
+1. **Check DNS:**
+   ```bash
+   dig vaultchaintr.com
+   # Should show your EC2 IP
+   ```
+
+2. **Verify Certificate:**
+   ```bash
+   sudo certbot certificates
+   ```
+
+3. **Renew Certificate:**
+   ```bash
+   sudo certbot renew
+   ```
+
+### Database Issues
+
+1. **Check Database Location:**
+   ```bash
+   ls -la ~/vaultchain/backend/database.db
+   ```
+
+2. **Check Permissions:**
+   ```bash
+   ls -la ~/vaultchain/backend/database.db
+   # Should be readable/writable
+   ```
+
+### Email Not Sending
+
+1. **Check Environment Variables:**
+   ```bash
+   cat ~/vaultchain/backend/.env
+   ```
+
+2. **Test Email Configuration:**
+   ```bash
+   cd ~/vaultchain/backend
+   node test-email.js
+   ```
+
+3. **For Gmail:** Use App Passwords, not regular password
+   - Go to: https://myaccount.google.com/apppasswords
+   - Generate app-specific password
 
 ---
 
-## Security Recommendations
+## Useful Commands Reference
 
-1. **Keep system updated:**
+```bash
+# PM2 Commands
+pm2 status                    # View all processes
+pm2 logs vaultchain-backend   # View backend logs
+pm2 restart vaultchain-backend # Restart backend
+pm2 stop vaultchain-backend   # Stop backend
+pm2 delete vaultchain-backend # Remove from PM2
+
+# Nginx Commands
+sudo systemctl status nginx   # Check Nginx status
+sudo systemctl restart nginx  # Restart Nginx
+sudo systemctl reload nginx   # Reload configuration
+sudo nginx -t                 # Test configuration
+sudo tail -f /var/log/nginx/error.log   # View errors
+sudo tail -f /var/log/nginx/access.log  # View access logs
+
+# SSL/Certbot Commands
+sudo certbot certificates      # List certificates
+sudo certbot renew            # Renew certificates
+sudo certbot renew --dry-run  # Test renewal
+
+# System Commands
+df -h                         # Check disk space
+free -h                       # Check memory
+top                           # Monitor system resources
+```
+
+---
+
+## Security Best Practices
+
+1. **Keep System Updated:**
    ```bash
    sudo apt update && sudo apt upgrade -y
    ```
 
-2. **Use strong passwords** for all services
+2. **Regular Backups:**
+   - Backup database: `cp ~/vaultchain/backend/database.db ~/backups/database-$(date +%Y%m%d).db`
+   - Consider automated backups to S3
 
-3. **Regular backups:**
-   ```bash
-   # Backup database
-   cp backend/database.db backups/database-$(date +%Y%m%d).db
-   ```
+3. **Firewall:**
+   - Only allow necessary ports (80, 443, 22)
+   - Do NOT expose port 3001 publicly
 
-4. **Monitor logs regularly**
+4. **Environment Variables:**
+   - Never commit `.env` files to Git
+   - Use strong passwords and API keys
 
-5. **Set up CloudWatch** for monitoring (optional)
-
-6. **Configure SSH key-only access** (disable password auth)
-
----
-
-## Production Checklist
-
-- [ ] EC2 instance created and running
-- [ ] Domain DNS configured and propagated
-- [ ] Node.js and dependencies installed
-- [ ] Backend `.env` file configured
-- [ ] Frontend built and deployed
-- [ ] Nginx configured and running
-- [ ] SSL certificate installed
-- [ ] PM2 managing backend process
-- [ ] Firewall configured
-- [ ] Application tested and working
-- [ ] Email functionality tested
-- [ ] OTP verification tested
-- [ ] Logs accessible
-- [ ] Backups configured
+5. **PM2 Monitoring:**
+   - Monitor logs regularly: `pm2 logs`
+   - Set up PM2 monitoring: `pm2 install pm2-logrotate`
 
 ---
 
-## Quick Update Deployment
+## Next Steps After Deployment
 
-When you need to update the application:
-
-```bash
-# 1. Pull latest changes (if using Git)
-cd ~/vaultchain-app/backend
-git pull origin main
-
-# OR upload new files via SCP
-
-# 2. Install new dependencies (if any)
-npm install --production
-
-# 3. Restart backend
-pm2 restart vaultchain-backend
-
-# 4. Update frontend
-cd ~/vaultchain-app/frontend
-# Upload new files or git pull
-npm install
-npm run build
-
-# 5. Restart Nginx
-sudo systemctl restart nginx
-```
+1. ✅ Test all features (login, signup, transactions, etc.)
+2. ✅ Set up automated backups
+3. ✅ Monitor logs for errors
+4. ✅ Set up uptime monitoring (e.g., UptimeRobot)
+5. ✅ Configure domain email (for SMTP using your domain)
 
 ---
 
 ## Support
 
-For issues, check:
-- PM2 logs: `pm2 logs`
-- Nginx logs: `/var/log/nginx/`
-- Backend logs: `~/vaultchain-app/backend/logs/`
+If you encounter issues:
+1. Check logs first: `pm2 logs` and `sudo tail -f /var/log/nginx/error.log`
+2. Verify DNS propagation
+3. Check security group settings
+4. Review this guide step by step
 
-Good luck with your deployment! 🚀
+---
+
+**Deployment Date:** _______________
+**EC2 Instance:** _________________
+**Domain:** vaultchaintr.com
 

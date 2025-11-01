@@ -48,8 +48,14 @@ initDb().then(async () => {
     }
     
     // Start the server after DB is ready
-    app.listen(PORT, () => {
-        console.log(`Server is listening on port ${PORT}`);
+    // Bind to 0.0.0.0 (all interfaces) for EC2 deployment so nginx can access it
+    // In production, nginx proxies requests from the internet to this backend
+    const HOST = process.env.HOST || '0.0.0.0';
+    app.listen(PORT, HOST, () => {
+        console.log(`Server is listening on ${HOST}:${PORT}`);
+        if (process.env.NODE_ENV === 'production') {
+            console.log(`✅ Backend ready for nginx proxy at http://${HOST}:${PORT}`);
+        }
     });
 }).catch(err => {
     console.error('Failed to initialize database:', err);
