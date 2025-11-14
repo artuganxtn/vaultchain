@@ -1,0 +1,49 @@
+<<<<<<< HEAD
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://vaultchaintr.com/</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vaultchaintr.com/" />
+    <xhtml:link rel="alternate" hreflang="ar" href="https://vaultchaintr.com/?lang=ar" />
+    <xhtml:link rel="alternate" hreflang="tr" href="https://vaultchaintr.com/?lang=tr" />
+  </url>
+  <url>
+    <loc>https://vaultchaintr.com/landing</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vaultchaintr.com/landing" />
+    <xhtml:link rel="alternate" hreflang="ar" href="https://vaultchaintr.com/landing?lang=ar" />
+    <xhtml:link rel="alternate" hreflang="tr" href="https://vaultchaintr.com/landing?lang=tr" />
+  </url>
+</urlset>
+
+=======
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://vaultchaintr.com/</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vaultchaintr.com/" />
+    <xhtml:link rel="alternate" hreflang="ar" href="https://vaultchaintr.com/?lang=ar" />
+    <xhtml:link rel="alternate" hreflang="tr" href="https://vaultchaintr.com/?lang=tr" />
+  </url>
+  <url>
+    <loc>https://vaultchaintr.com/landing</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vaultchaintr.com/landing" />
+    <xhtml:link rel="alternate" hreflang="ar" href="https://vaultchaintr.com/landing?lang=ar" />
+    <xhtml:link rel="alternate" hreflang="tr" href="https://vaultchaintr.com/landing?lang=tr" />
+  </url>
+</urlset>
+
+>>>>>>> 8cf7b9904c0e59190db7233e79357b9d9ab0b44b

@@ -1,0 +1,57 @@
+<<<<<<< HEAD
+# robots.txt for VaultChain
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /wallet/
+Disallow: /trading/
+Disallow: /investment/
+Disallow: /copy-trading/
+Disallow: /referral/
+Disallow: /kyc/
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+
+# Allow public pages
+Allow: /
+Allow: /landing
+
+# Sitemap
+Sitemap: https://vaultchaintr.com/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1
+
+=======
+# robots.txt for VaultChain
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /wallet/
+Disallow: /trading/
+Disallow: /investment/
+Disallow: /copy-trading/
+Disallow: /referral/
+Disallow: /kyc/
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+
+# Allow public pages
+Allow: /
+Allow: /landing
+
+# Sitemap
+Sitemap: https://vaultchaintr.com/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1
+
+>>>>>>> 8cf7b9904c0e59190db7233e79357b9d9ab0b44b
