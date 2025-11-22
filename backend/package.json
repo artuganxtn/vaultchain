@@ -1,0 +1,23 @@
+{
+  "name": "vaultchain-backend",
+  "version": "1.0.0",
+  "description": "VaultChain Backend Server",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.18.2",
+    "nodemailer": "^6.9.8",
+    "sqlite3": "^5.1.6",
+    "ws": "^8.18.3"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

@@ -1,0 +1,26 @@
+# robots.txt for VaultChain
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /wallet/
+Disallow: /trading/
+Disallow: /investment/
+Disallow: /copy-trading/
+Disallow: /referral/
+Disallow: /kyc/
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+
+# Allow public pages
+Allow: /
+Allow: /landing
+
+# Sitemap
+Sitemap: https://vaultchaintr.store/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1
