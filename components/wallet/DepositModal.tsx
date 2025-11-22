@@ -55,6 +55,7 @@ const DepositModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOp
     const [step, setStep] = useState<'selection' | 'details' | 'success'>('selection');
     const [method, setMethod] = useState<'usdt' | 'bank' | null>(null);
     const [amount, setAmount] = useState('');
+    const [whatsappNumber, setWhatsappNumber] = useState('');
     const [proofFile, setProofFile] = useState<File | null>(null);
     const [proofPreview, setProofPreview] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -62,7 +63,6 @@ const DepositModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOp
     
     const referenceCode = React.useMemo(() => `VC-${Date.now().toString().slice(-6)}`, [step]);
     const usdtAddress = 'TBaGgZW2a43eZcrgDavnJgZ9mM2DRoMXZM';
-    const localDepositorDetails = { name: 'Naime Kıddo', phone: '+905365705836' };
 
     const handleCopy = (text: string, field: string) => {
         navigator.clipboard.writeText(text);
@@ -80,22 +80,37 @@ const DepositModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOp
     };
     
     const handleSubmit = async () => {
-        if (method !== 'usdt' || !amount || !proofFile || !context) return;
-        setIsLoading(true);
-        try {
-            const proofBase64 = await blobToBase64(proofFile);
-            const enteredAmount = parseFloat(amount);
-            
-            const originalCurrency = 'USDT';
-            const usdAmount = enteredAmount;
-            
-            await context.handleDepositRequest(usdAmount, referenceCode, proofBase64, enteredAmount, originalCurrency);
-            setStep('success');
-        } catch (error) {
-            console.error("Error processing deposit request:", error);
-            // You might want to show an error message to the user here
-        } finally {
-            setIsLoading(false);
+        if (!context) return;
+        
+        if (method === 'usdt') {
+            if (!amount || !proofFile) return;
+            setIsLoading(true);
+            try {
+                const proofBase64 = await blobToBase64(proofFile);
+                const enteredAmount = parseFloat(amount);
+                
+                const originalCurrency = 'USDT';
+                const usdAmount = enteredAmount;
+                
+                await context.handleDepositRequest(usdAmount, referenceCode, proofBase64, enteredAmount, originalCurrency);
+                setStep('success');
+            } catch (error) {
+                console.error("Error processing deposit request:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        } else if (method === 'bank') {
+            if (!amount || !whatsappNumber) return;
+            setIsLoading(true);
+            try {
+                const enteredAmount = parseFloat(amount);
+                await context.handleDepositRequest(enteredAmount, referenceCode, '', enteredAmount, 'TRY', whatsappNumber);
+                setStep('success');
+            } catch (error) {
+                console.error("Error processing deposit request:", error);
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
     
@@ -103,6 +118,7 @@ const DepositModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOp
         setStep('selection');
         setMethod(null);
         setAmount('');
+        setWhatsappNumber('');
         setProofFile(null);
         setProofPreview(null);
         setIsLoading(false);
@@ -160,19 +176,52 @@ const DepositModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOp
                 }
                 if (method === 'bank') {
                     return (
-                        <div className="space-y-4 text-center">
-                            <p className="text-gray-600 dark:text-gray-300">
-                                لإتمام عملية الإيداع، يرجى التواصل مع الرقم التالي عبر واتساب.
-                            </p>
-                            <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-2 max-w-sm mx-auto">
-                                <p className="truncate flex-1 text-center px-2 font-mono text-lg">{localDepositorDetails.phone}</p>
-                                <button onClick={() => handleCopy(localDepositorDetails.phone, 'phone')} className="bg-green-500 text-white px-3 py-1.5 rounded-md font-semibold flex items-center space-x-2 rtl:space-x-reverse text-sm">
-                                    <CopyIcon className="w-4 h-4"/>
-                                    <span>{copied === 'phone' ? t('copied') : t('copy')}</span>
-                                </button>
+                        <div className="space-y-4">
+                            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
+                                <p className="text-xs text-green-800 dark:text-green-300">{t('referenceCode')}</p>
+                                <p className="font-mono text-lg font-bold text-green-600 dark:text-green-400">{referenceCode}</p>
                             </div>
-                            <div className="pt-4">
-                                <button onClick={resetState} className="w-full max-w-sm mx-auto py-3 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100 font-bold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">{t('close')}</button>
+                            <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
+                                {t('bankDepositInstructions', { defaultValue: 'Enter your deposit amount and WhatsApp number. An admin will contact you to complete the deposit.' })}
+                            </p>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        {t('depositAmount')}
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        value={amount} 
+                                        onChange={(e) => setAmount(e.target.value)} 
+                                        placeholder={t('enterAmount', { defaultValue: 'Enter amount' })} 
+                                        className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        {t('whatsappNumber', { defaultValue: 'WhatsApp Number' })}
+                                    </label>
+                                    <input 
+                                        type="tel" 
+                                        value={whatsappNumber} 
+                                        onChange={(e) => setWhatsappNumber(e.target.value)} 
+                                        placeholder={t('enterWhatsappNumber', { defaultValue: '+90 555 123 4567' })} 
+                                        className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" 
+                                    />
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        {t('whatsappNumberHint', { defaultValue: 'An admin will contact you on this number via WhatsApp' })}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-3 rtl:space-x-reverse pt-2">
+                                <button onClick={resetState} className="w-full py-3 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100 font-bold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">{t('cancel')}</button>
+                                <button 
+                                    onClick={handleSubmit} 
+                                    disabled={!amount || !whatsappNumber || isLoading || parseFloat(amount) <= 0} 
+                                    className="w-full py-3 bg-gradient-to-tr from-green-500 to-emerald-700 text-white font-bold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isLoading ? t('processing') : t('submitDepositRequest', { defaultValue: 'Submit Request' })}
+                                </button>
                             </div>
                         </div>
                     );
