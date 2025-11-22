@@ -76,7 +76,7 @@ exports.getAllData = async (req, res) => {
 
         res.json({
             users: parseJsonFields(users, ['permissions', 'referrals', 'portfolio', 'kycDocuments', 'notification']),
-            transactions: parseJsonFields(transactions, ['dispute', 'withdrawalDetails']),
+            transactions: parseJsonFields(transactions, ['dispute', 'withdrawalDetails', 'depositDetails']),
             subscriptions: parseJsonFields(subscriptions, ['settings']),
             copyTraders: parseJsonFields(copyTraders, ['performanceHistory', 'tradeHistory', 'reviews']),
             auditLogs,

@@ -28,7 +28,7 @@ export const AppContext = React.createContext<{
   updatePassword: (oldPass: string, newPass: string) => Promise<boolean>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'date' | 'userId'>) => Promise<Transaction | void>;
   adminAddTransaction: (userId: string, transaction: Omit<Transaction, 'id' | 'date' | 'userId'>) => Promise<Transaction | void>;
-  handleDepositRequest: (amount: number, referenceCode: string, proofImageUrl: string, originalAmount?: number, originalCurrency?: string) => Promise<void>;
+  handleDepositRequest: (amount: number, referenceCode: string, proofImageUrl: string, originalAmount?: number, originalCurrency?: string, whatsappNumber?: string) => Promise<void>;
   approveDeposit: (transactionId: string) => Promise<void>;
   rejectDeposit: (transactionId: string) => Promise<void>;
   approveInvestmentWithdrawal: (transactionId: string) => Promise<void>;
@@ -334,11 +334,13 @@ const App: React.FC = () => {
         return newTx;
     }, [refetchData]);
     
-    const handleDepositRequest = useCallback(async (amount: number, referenceCode: string, proofImageUrl: string, originalAmount?: number, originalCurrency?: string) => {
+    const handleDepositRequest = useCallback(async (amount: number, referenceCode: string, proofImageUrl: string, originalAmount?: number, originalCurrency?: string, whatsappNumber?: string) => {
         if (!loggedInUser) return;
+        const depositDetails = whatsappNumber ? JSON.stringify({ whatsappNumber }) : undefined;
         await addTransaction({
             description: 'Deposit Request', amount, originalAmount, originalCurrency,
-            type: TransactionType.DEPOSIT, status: 'Awaiting Confirmation', referenceCode, proofImageUrl
+            type: TransactionType.DEPOSIT, status: 'Awaiting Confirmation', referenceCode, proofImageUrl,
+            depositDetails
         });
     }, [loggedInUser, addTransaction]);
     

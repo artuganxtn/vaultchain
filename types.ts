@@ -206,6 +206,9 @@ export interface Transaction {
     fee?: number;
     netReceived?: number;
   };
+  depositDetails?: {
+    whatsappNumber?: string;
+  };
   // Details for Buy/Sell transactions
   assetId?: string;
   assetQuantity?: number;

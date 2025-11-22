@@ -54,7 +54,7 @@ const createTables = async () => {
     const createTransactionTable = `
         CREATE TABLE IF NOT EXISTS transactions (
             id TEXT PRIMARY KEY, userId TEXT, recipientId TEXT, date TEXT, description TEXT, amount REAL, originalAmount REAL, originalCurrency TEXT,
-            type TEXT, status TEXT, adminId TEXT, referenceCode TEXT, proofImageUrl TEXT, dispute TEXT, withdrawalDetails TEXT,
+            type TEXT, status TEXT, adminId TEXT, referenceCode TEXT, proofImageUrl TEXT, dispute TEXT, withdrawalDetails TEXT, depositDetails TEXT,
             vaultVoucherCode TEXT, assetId TEXT, assetQuantity REAL, assetPrice REAL,
             FOREIGN KEY(userId) REFERENCES users(id)
         );`;

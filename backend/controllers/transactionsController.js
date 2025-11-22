@@ -31,6 +31,13 @@ const addTransactionInternal = async (userId, transaction) => {
         ...transaction
     };
     
+    // Stringify JSON fields before insert
+    ['dispute', 'withdrawalDetails', 'depositDetails'].forEach(field => {
+        if (newTx[field] && typeof newTx[field] === 'object') {
+            newTx[field] = JSON.stringify(newTx[field]);
+        }
+    });
+    
     const columns = Object.keys(newTx).map(k => `"${k}"`).join(', ');
     const placeholders = Object.keys(newTx).map(() => '?').join(', ');
     
@@ -63,15 +70,22 @@ exports.updateTransaction = async (req, res) => {
     });
 
     try {
+        // Stringify JSON fields before update
+        ['dispute', 'withdrawalDetails', 'depositDetails'].forEach(field => {
+            if (updates[field]) {
+                updates[field] = JSON.stringify(updates[field]);
+            }
+        });
+
         // We update the whole object, simpler than building dynamic SET clause
         await dbRun(
             `UPDATE transactions SET 
                 userId = ?, recipientId = ?, date = ?, description = ?, amount = ?, originalAmount = ?, originalCurrency = ?,
-                type = ?, status = ?, adminId = ?, referenceCode = ?, proofImageUrl = ?, dispute = ?, withdrawalDetails = ?
+                type = ?, status = ?, adminId = ?, referenceCode = ?, proofImageUrl = ?, dispute = ?, withdrawalDetails = ?, depositDetails = ?
             WHERE id = ?`,
             [
                 updates.userId, updates.recipientId, updates.date, updates.description, updates.amount, updates.originalAmount, updates.originalCurrency,
-                updates.type, updates.status, updates.adminId, updates.referenceCode, updates.proofImageUrl, updates.dispute, updates.withdrawalDetails,
+                updates.type, updates.status, updates.adminId, updates.referenceCode, updates.proofImageUrl, updates.dispute, updates.withdrawalDetails, updates.depositDetails,
                 id
             ]
         );
